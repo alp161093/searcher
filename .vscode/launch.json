@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["-o", "etc/indexes"]
+            "args": ["-o", "etc/indexes/index.pkl"]
         }
     ]
 }
