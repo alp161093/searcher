@@ -47,32 +47,134 @@ class Retriever:
         """
         tokenizer = TreebankWordTokenizer()
         listadoQuery = tokenizer.tokenize(query)
-        resultados = [] 
+        
+    def resolve_query(self, query: str) -> List[int]:
+        tokenizer = TreebankWordTokenizer()
+        listadoQuery = tokenizer.tokenize(query)
+        resultados = []
         i = 0
+        "grado AND NOT (master OR docencia)"
+        #NOT master OR docencia  [4,5]
         while i < len(listadoQuery):
             termino = listadoQuery[i] 
             # Procesamos el término actual
+            if termino == "(":
+                    j = i + 1
+                    string_aux = ""
+                    posting_parentesis = []
+                    while j < len(listadoQuery):
+                        siguienteTermino = listadoQuery[j] #)
+                        if siguienteTermino == ")":
+                            posting_parentesis = self.resolve_query(string_aux)
+                        else:
+                            string_aux = string_aux + siguienteTermino + " " #
+                            j += 1
+                    resultados = posting_parentesis
+                    i = j
             if termino == "AND":
                 # Realizamos la intersección de las posting lists
                 i += 1
                 siguiente_palabra = listadoQuery[i]
+                if termino == "(":
+                    j = i + 1
+                    string_aux = ""
+                    posting_parentesis = []
+                    while j < len(listadoQuery):
+                        siguienteTermino = listadoQuery[j] #)
+                        if siguienteTermino == ")":
+                            posting_parentesis = self.resolve_query(string_aux)
+                        else:
+                            string_aux = string_aux + siguienteTermino + " " #
+                            j += 1
+                    resultados = self._and_(resultados, posting_parentesis)
+                    i = j
                 if termino == "NOT":
                     # Restamos la posting list correspondiente
                     i += 1
                     siguiente_palabra = listadoQuery[i]
-                    posting_not = self._not_(self.index.postings[siguiente_palabra])
-                    resultados = self._and_(resultados, posting_not)
+                    if termino == "(":
+                        j = i + 1
+                        string_aux = ""
+                        posting_parentesis = []
+                        while j < len(listadoQuery):
+                            siguienteTermino = listadoQuery[j] #)
+                            if siguienteTermino == ")":
+                                posting_parentesis = self.resolve_query(string_aux)
+                            else:
+                                string_aux = string_aux + siguienteTermino + " " #
+                                j += 1
+                        posting_not = self._not_(posting_parentesis)
+                        resultados = self._and_(resultados, posting_not)
+                        i = j
+                    else:
+                        posting_not = self._not_(self.index.postings[siguiente_palabra])
+                        resultados = self._and_(resultados, posting_not)
                 else: 
                     resultados = self._and_(resultados, self.index.postings[siguiente_palabra])
             elif termino == "OR":
                 # Realizamos la unión de las posting lists
                 i += 1
                 siguiente_palabra = listadoQuery[i]
-                resultados = self._or_(resultados, self.index.postings[siguiente_palabra])
+                if termino == "(":
+                    j = i + 1
+                    string_aux = ""
+                    posting_parentesis = []
+                    while j < len(listadoQuery):
+                        siguienteTermino = listadoQuery[j] #)
+                        if siguienteTermino == ")":
+                            posting_parentesis = self.resolve_query(string_aux)
+                        else:
+                            string_aux = string_aux + siguienteTermino + " " #
+                            j += 1
+                    resultados = self._or_(resultados, posting_parentesis)
+                    i = j
+                if termino == "NOT":
+                    # Restamos la posting list correspondiente
+                    i += 1
+                    siguiente_palabra = listadoQuery[i]
+                    if termino == "(":
+                        j = i + 1
+                        string_aux = ""
+                        posting_parentesis = []
+                        while j < len(listadoQuery):
+                            siguienteTermino = listadoQuery[j] #)
+                            if siguienteTermino == ")":
+                                posting_parentesis = self.resolve_query(string_aux)
+                            else:
+                                string_aux = string_aux + siguienteTermino + " " #
+                                j += 1
+                        posting_not = self._not_(posting_parentesis)
+                        resultados = self._or_(resultados, posting_not)
+                        i = j
+                    else:
+                        posting_not = self._not_(self.index.postings[siguiente_palabra])
+                        resultados = self._or_(resultados, posting_not)
+                else: 
+                    resultados = self._or_(resultados, self.index.postings[siguiente_palabra])
+            elif termino == "NOT":
+                i += 1
+                siguiente_palabra = listadoQuery[i]
+                if termino == "(":
+                    j = i + 1
+                    string_aux = ""
+                    posting_parentesis = []
+                    while j < len(listadoQuery):
+                        siguienteTermino = listadoQuery[j] #)
+                        if siguienteTermino == ")":
+                            posting_parentesis = self.resolve_query(string_aux)
+                        else:
+                            string_aux = string_aux + siguienteTermino + " " #
+                            j += 1
+                    resultados = self._not_(posting_parentesis)
+                    i = j
+                else:
+                    resultados = self._not_(self.index.postings[siguiente_palabra])
             else:
                 # Si es un término individual, inicializamos resultados con la posting list del término
                 resultados = listadoQuery[self.index.postings[termino]]
             i += 1
+
+
 
     def search_from_file(self, fname: str) -> Dict[str, List[Result]]:
         """Método para hacer consultas desde fichero.

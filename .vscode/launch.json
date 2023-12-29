@@ -11,7 +11,12 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["-o", "etc/indexes/index.pkl"]
+            "args": [
+                "-i",
+                "etc/indexes/index.pkl",
+                "-q",
+                "grado AND master"
+            ]
         }
     ]
 }
