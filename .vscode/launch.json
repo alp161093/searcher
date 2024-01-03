@@ -11,7 +11,12 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["-o", "etc/indexes/index.pkl"]
+            "args": [
+                "-i",
+                "etc/indexes/index_version2.pkl",
+                "-f",
+                "queries.txt"
+            ]
         }
     ]
 }

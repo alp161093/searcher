@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from .retriever import Retriever
+from retriever import Retriever
 
 
 def parse_args():

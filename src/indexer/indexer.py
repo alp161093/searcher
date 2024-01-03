@@ -42,7 +42,7 @@ class Index:
     - "documents": lista de `Document`.
     """
 
-    postings: Dict[str, List[int]] = field(default_factory=lambda: {})
+    postings: Dict[str, Dict[int, List[int]]] = field(default_factory=lambda: {})
     documents: List[Document] = field(default_factory=lambda: [])
 
     def save(self, output_name: str) -> None:
@@ -104,14 +104,16 @@ class Indexer:
             """Se lee el archivo y lo pasamos a la variable datos_json para poder trabajar con el"""
             with open(ruta_completa, 'r') as archivo:
                 datos_json = json.load(archivo)
-            
-            textoPdf = self.extract_text_from_pdf(datos_json['url'])
+
             """obtengo el titulo del fichero de la etiqueta title dentro del head de la web"""
             parser = BeautifulSoup( datos_json['text'], "html.parser")
             titulo = parser.find(name = "title").text
-            """Nos quedamos con el lo que se encuentra dentro del div de clase page, que es de donde tenemos que sacar el texto de las etiquetas y se lo pasamos a la funcion parse para trabajar con el"""
-            """"textoEtiquetaDiv = parser.find(name = "div", class_ = "page")"""
-            textoParse = self.parse(datos_json['text'])
+            """textoParse es la variable en la que se almacena el texto plano"""
+            textoParse = ""
+            if datos_json['url'].endswith(".pdf"):
+                textoParse = self.extract_text_from_pdf(datos_json['url'])
+            else:
+                textoParse = self.parse(datos_json['text'])
             """remove_split_symbols"""
             textoParse = self.remove_split_symbols(textoParse)
             """remove_punctuation""" 
@@ -128,12 +130,18 @@ class Indexer:
             self.index.documents.append(doc)
             idSecuencial += 1
 
+            contadorPosicion = 1
             for word in listaPalabrasSinStopWords:
                 if word not in self.index.postings:
-                    self.index.postings[word] = [doc.id]
+                    self.index.postings[word] = {doc.id: [contadorPosicion]}
                 else:
-                    self.index.postings[word].append(doc.id)
-                
+                    if doc.id not in self.index.postings[word]:
+                        self.index.postings[word][doc.id] = [contadorPosicion]
+                    else:
+                        self.index.postings[word][doc.id].append(contadorPosicion)
+    
+                contadorPosicion += 1
+
 
         te = time()
 
@@ -155,7 +163,7 @@ class Indexer:
             text = page.extract_text()
             response += text + " "
             indice += 1 
-        return text
+        return response.lower()
 
     def parse(self, text: str) -> str:
         """Método para extraer el texto de un documento.
@@ -180,35 +188,6 @@ class Indexer:
             textoEtiquetas = textoEtiquetaDiv.find_all(name=etiqueta)
             for txt in textoEtiquetas:
                 response += txt.text + " "
-
-        
-        """etiquetasH1 = textoEtiquetaDiv.find_all(name="h1")
-        for H1 in etiquetasH1:
-            response += H1.text + " "
-
-        etiquetasH2 = parser.find_all(name="h2")
-        for H2 in etiquetasH2:
-            response += H2.text + " "
-
-        etiquetasH3 = parser.find_all(name="h3")
-        for H3 in etiquetasH3:
-            response += H3.text + " "
-
-        etiquetasB = parser.find_all(name="b")
-        for B in etiquetasB:
-            response += B.text + " "
-
-        etiquetasI = parser.find_all(name="i")
-        for I in etiquetasI:
-            response += I.text + " "
-
-        etiquetasP = parser.find_all(name="p")
-        for P in etiquetasP:
-            response += P.text + " "
-
-        etiquetasA = parser.find_all(name="a")
-        for A in etiquetasA:
-            response += A.text + " """
 
         return response.lower()
 
@@ -237,9 +216,10 @@ class Indexer:
         """
         nltk.download('stopwords')
         listadoStopWords = stopwords.words('spanish')
+        listadoStopWords.append('\uf0b7')
         listadoAux = []
         for word in words:
-            if(word not in listadoStopWords and word not in listadoAux):
+            if(word not in listadoStopWords):
                 listadoAux.append(word)
         return listadoAux           
 
