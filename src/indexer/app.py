@@ -35,7 +35,6 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    """he tenido que comentar los required porque me dan problemas al devolver los args"""
     args = parse_args()
     indexer = Indexer(args)
     indexer.build_index()
