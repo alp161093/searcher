@@ -1,5 +1,6 @@
 from src.crawler.crawler import Crawler
 from src.retriever.retriever import Retriever
+from src.indexer.indexer import Indexer
 from argparse import ArgumentParser
 
 def parse_args_crawler():
@@ -47,12 +48,18 @@ def parse_args_retriever():
         "-i",
         "--index-file",
         type=str,
+        default="etc/indexes/index.pkl",
         help="Ruta del fichero con el índice invertido",
         required=True,
     )
 
     parser.add_argument(
-        "-q", "--query", type=str, help="Query a resolver", required=False
+        "-q", 
+        "--query", 
+        type=str, 
+        default="master AND grado",
+        help="Query a resolver", 
+        required=False
     )
 
     parser.add_argument(
