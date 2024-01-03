@@ -13,9 +13,9 @@
             "justMyCode": true,
             "args": [
                 "-i",
-                "etc/indexes/index.pkl",
-                "-q",
-                "grado AND master"
+                "etc/indexes/index_version2.pkl",
+                "-f",
+                "queries.txt"
             ]
         }
     ]
