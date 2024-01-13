@@ -1,2 +1,3 @@
-"puertas abiertas titulaciones"
+"universidad europea universidad" AND (master OR doctorado) AND NOT "inteligencia artificial"
 master AND grado
+"universidad europea universidad"

@@ -74,6 +74,11 @@ class Indexer:
         self.args = args
         self.index = Index()
         self.stats = Stats()
+        #se cargan los stopwords al incializar para que simplemente solo se cargen una vez para todos los documentos
+        nltk.download('stopwords')
+        self.listadoStopWords = stopwords.words('spanish')
+        #se añade este elemento al listado de stopwords porque en los pdfs sale y así lo quitamos tambien, es un tipo de punto de los pdfs
+        self.listadoStopWords.append('\uf0b7')
 
     def build_index(self) -> None:
         """Método para construir un índice.
@@ -105,14 +110,16 @@ class Indexer:
             with open(ruta_completa, 'r') as archivo:
                 datos_json = json.load(archivo)
 
-            """obtengo el titulo del fichero de la etiqueta title dentro del head de la web"""
-            parser = BeautifulSoup( datos_json['text'], "html.parser")
-            titulo = parser.find(name = "title").text
+           
             """textoParse es la variable en la que se almacena el texto plano"""
             textoParse = ""
             if datos_json['url'].endswith(".pdf"):
+                titulo = datos_json['url'].split("/")[-1].split(".")[0]
                 textoParse = self.extract_text_from_pdf(datos_json['url'])
             else:
+                """obtengo el titulo del fichero de la etiqueta title dentro del head de la web"""
+                parser = BeautifulSoup( datos_json['text'], "html.parser")
+                titulo = parser.find(name = "title").text
                 textoParse = self.parse(datos_json['text'])
             """remove_split_symbols"""
             textoParse = self.remove_split_symbols(textoParse)
@@ -127,6 +134,7 @@ class Indexer:
 
             """se crea un documento nuevo con los datos correspondientes y se almacena en el listado de documentos de index"""
             doc = Document(idSecuencial, titulo,  datos_json['url'], textoParse)
+            
             self.index.documents.append(doc)
             idSecuencial += 1
 
@@ -144,7 +152,6 @@ class Indexer:
 
 
         te = time()
-
         # Save index
         self.index.save(self.args.output_name)
 
@@ -214,12 +221,10 @@ class Indexer:
         Returns:
             List[str]: lista de palabras del documento, sin stopwords
         """
-        nltk.download('stopwords')
-        listadoStopWords = stopwords.words('spanish')
-        listadoStopWords.append('\uf0b7')
+        
         listadoAux = []
         for word in words:
-            if(word not in listadoStopWords):
+            if(word not in self.listadoStopWords):
                 listadoAux.append(word)
         return listadoAux           
 

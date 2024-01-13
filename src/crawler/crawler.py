@@ -59,8 +59,7 @@ class Crawler:
         
         while queue.not_empty:
             url =queue.get() 
-            if url == "https://universidadeuropea.com/resources/media/documents/GRUPO-PEE_Politica-de-Cumplimiento-2023-ESP.pdf":
-                    print()
+            response = requests.get(url)
             """Creamos el json en la ruta especificada"""
             oJson = {"url": url, "text" : response.text}
             rutaDestino = self.args.output_folder

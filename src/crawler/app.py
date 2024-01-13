@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from crawler import Crawler
+from .crawler import Crawler
 
 
 def parse_args():
