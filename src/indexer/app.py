@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from indexer import Indexer
+from .indexer import Indexer
 
 
 def parse_args():

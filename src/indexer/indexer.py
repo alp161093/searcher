@@ -6,6 +6,7 @@ from time import time
 from typing import Dict, List
 import os
 import json
+import unicodedata
 from bs4 import BeautifulSoup
 import nltk
 from nltk.tokenize import TreebankWordTokenizer
@@ -170,7 +171,7 @@ class Indexer:
             text = page.extract_text()
             response += text + " "
             indice += 1 
-        return response.lower()
+        return self.remove_acentos(response.lower())
 
     def parse(self, text: str) -> str:
         """Método para extraer el texto de un documento.
@@ -196,7 +197,14 @@ class Indexer:
             for txt in textoEtiquetas:
                 response += txt.text + " "
 
-        return response.lower()
+        return self.remove_acentos(response.lower())
+    
+    def remove_acentos(self, texto: str):
+ 
+        texto_normalizado = unicodedata.normalize('NFD', texto)
+        texto_sin_acentos = ''.join(c for c in texto_normalizado if not unicodedata.combining(c))
+    
+        return texto_sin_acentos
 
     def tokenize(self, text: str) -> List[str]:
         """Método para tokenizar un texto. Esto es, convertir
