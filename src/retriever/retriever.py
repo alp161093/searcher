@@ -3,6 +3,7 @@ from argparse import Namespace
 from dataclasses import dataclass
 from time import time
 from typing import Dict, List
+import unicodedata
 import nltk
 import sys
 import re
@@ -11,7 +12,7 @@ from nltk.corpus import stopwords
 from copy import deepcopy
 
 
-from indexer import Index
+from ..indexer.indexer import Index
 
 
 @dataclass
@@ -53,9 +54,10 @@ class Retriever:
             List[Result]: lista de resultados que cumplen la consulta
         """
         listado_results = []
-        results = self.resolve_query(query)
+        query_sinAcentos = self.remove_acentos(query)#se quitan los acentos
+        results = self.resolve_query(query_sinAcentos)
         #ordenamos
-        results_notas = self.score(results, query)
+        results_notas = self.score(results, query_sinAcentos)
         for result in results_notas:
             #coger url del documento 
             document = next((doc for doc in self.index.documents if doc.id == result),None) 
@@ -67,7 +69,13 @@ class Retriever:
             listado_results.append(item)
         return listado_results
             
-
+    def remove_acentos(self, texto: str):
+ 
+        texto_normalizado = unicodedata.normalize('NFD', texto)
+        texto_sin_acentos = ''.join(c for c in texto_normalizado if not unicodedata.combining(c))
+    
+        return texto_sin_acentos
+    
     def resolve_query(self, query: str) -> List[int]:
         #'"GRADO DE INFORMATICA" AND ( MASTER AND TEST ) OR NOT DOCTORADO'
         resultados = []
@@ -99,7 +107,7 @@ class Retriever:
         
         return sys.maxsize # Devolvemos un 4 si es un parentesis
                
-    def isOperador(self, c: str) -> bool:
+    def isOperando(self, c: str) -> bool:
         return not c in ['AND', 'OR', 'NOT', '(', ')']  
       
     def shuntingYard(self, query: str):
@@ -117,7 +125,7 @@ class Retriever:
                 while listado_aux and listado_aux[-1] != '(':
                     resultado.append(listado_aux.pop())
                 listado_aux.pop()
-            elif self.isOperador(c):
+            elif self.isOperando(c):
                 resultado.append(c)
             else:
                 while listado_aux and listado_aux[-1] != '(' and self.prec(c) >= self.prec(listado_aux[-1]):
@@ -141,15 +149,12 @@ class Retriever:
     
     def resolver_query(self, query: str) -> List[int]:
         listado_aux = []
-        notas = {}
         for token in query:
             if ' ' in token:
                 posting_token = self.resolve_posicionales(token)
-                for doc in posting_token:
-                    notas[doc] = {10}
                 listado_aux.append(posting_token)
             else:    
-                if self.isOperador(token):
+                if self.isOperando(token):
                     posting_token = self.index.postings[token]
                     listado_aux.append(posting_token)
                 elif token == 'NOT':
@@ -161,264 +166,6 @@ class Retriever:
                     listado_aux.append(self.calcula(token_1,token_2,token))
     
         return listado_aux.pop()
-
-    """def resolve_query1(self, query: str) -> List[int]:
-        tokenizer = TreebankWordTokenizer()
-        listadoQuery = tokenizer.tokenize(query)
-        resultados = []
-        i = 0
-        "grado AND NOT (master OR docencia)"
-        #NOT master OR docencia  [4,5]
-        while i < len(listadoQuery):
-            termino = listadoQuery[i] 
-            # Procesamos el término actual
-            if termino == "(":
-                    j = i + 1
-                    string_aux = ""
-                    posting_parentesis = []
-                    siguienteTermino = ""
-                    while j < len(listadoQuery) and  siguienteTermino != ")":
-                        siguienteTermino = listadoQuery[j] 
-                        if siguienteTermino == ")":
-                            posting_parentesis = self.resolve_query(string_aux)
-                        else:
-                            string_aux = string_aux + siguienteTermino + " " 
-                            j += 1
-                    resultados = posting_parentesis
-                    i = j
-            elif termino == '``':
-                    j = i + 1
-                    string_aux = ""
-                    posting_comillas = []
-                    siguienteTermino = ""
-                    while j < len(listadoQuery) and  siguienteTermino != "''":
-                        siguienteTermino = listadoQuery[j] 
-                        if siguienteTermino == "''":
-                            posting_comillas = self.resolve_posicionales(string_aux)
-                        else:
-                            string_aux = string_aux + siguienteTermino + " " 
-                            j += 1
-                    resultados = posting_comillas
-                    i = j
-            elif termino == "AND":
-                # Realizamos la intersección de las posting lists
-                i += 1
-                siguiente_palabra = listadoQuery[i]
-                if siguiente_palabra == "(":
-                    j = i + 1
-                    string_aux = ""
-                    posting_parentesis = []
-                    siguienteTermino = ""
-                    while j < len(listadoQuery) and  siguienteTermino != ")":
-                        siguienteTermino = listadoQuery[j] 
-                        if siguienteTermino == ")":
-                            posting_parentesis = self.resolve_query(string_aux)
-                        else:
-                            string_aux = string_aux + siguienteTermino + " " 
-                            j += 1
-                    resultados = self._and_(resultados, posting_parentesis)
-                    i = j
-                elif termino == '``':
-                    j = i + 1
-                    string_aux = ""
-                    posting_comillas = []
-                    siguienteTermino = ""
-                    while j < len(listadoQuery) and  siguienteTermino != "''":
-                        siguienteTermino = listadoQuery[j] 
-                        if siguienteTermino == "''":
-                            posting_comillas = self.resolve_posicionales(string_aux)
-                        else:
-                            string_aux = string_aux + siguienteTermino + " " 
-                            j += 1
-                    resultados = self._and_(resultados, posting_comillas)
-                    i = j
-                elif siguiente_palabra == "NOT":
-                    # Restamos la posting list correspondiente
-                    i += 1
-                    siguiente_palabra = listadoQuery[i]
-                    if siguiente_palabra == "(":
-                        j = i + 1
-                        string_aux = ""
-                        posting_parentesis = []
-                        while j < len(listadoQuery) and  siguienteTermino != ")":
-                            siguienteTermino = listadoQuery[j] 
-                            if siguienteTermino == ")":
-                                posting_parentesis = self.resolve_query(string_aux)
-                            else:
-                                string_aux = string_aux + siguienteTermino + " " 
-                                j += 1
-                        posting_not = self._not_(posting_parentesis)
-                        resultados = self._and_(resultados, posting_not)
-                        i = j
-                    else:
-                        posting_not = self._not_(self.index.postings[siguiente_palabra])
-                        resultados = self._and_(resultados, posting_not)
-                else: 
-                    resultados = self._and_(resultados, self.index.postings[siguiente_palabra])
-            elif termino == "OR":
-                # Realizamos la unión de las posting lists
-                i += 1
-                siguiente_palabra = listadoQuery[i]
-                if siguiente_palabra == "(":
-                    j = i + 1
-                    string_aux = ""
-                    posting_parentesis = []
-                    siguienteTermino = ""
-                    while j < len(listadoQuery) and  siguienteTermino != ")":
-                        siguienteTermino = listadoQuery[j] 
-                        if siguienteTermino == ")":
-                            posting_parentesis = self.resolve_query(string_aux)
-                        else:
-                            string_aux = string_aux + siguienteTermino + " " 
-                            j += 1
-                    resultados = self._or_(resultados, posting_parentesis)
-                    i = j
-                elif termino == '``':
-                    j = i + 1
-                    string_aux = ""
-                    posting_comillas = []
-                    siguienteTermino = ""
-                    while j < len(listadoQuery) and  siguienteTermino != "''":
-                        siguienteTermino = listadoQuery[j] 
-                        if siguienteTermino == "''":
-                            posting_comillas = self.resolve_posicionales(string_aux)
-                        else:
-                            string_aux = string_aux + siguienteTermino + " " 
-                            j += 1
-                    resultados = self._or_(resultados, posting_comillas)
-                    i = j
-                elif siguiente_palabra == "NOT":
-                    # Restamos la posting list correspondiente
-                    i += 1
-                    siguiente_palabra = listadoQuery[i]
-                    if siguiente_palabra == "(":
-                        j = i + 1
-                        string_aux = ""
-                        posting_parentesis = []
-                        siguienteTermino = ""
-                        while j < len(listadoQuery) and  siguienteTermino != ")":
-                            siguienteTermino = listadoQuery[j] 
-                            if siguienteTermino == ")":
-                                posting_parentesis = self.resolve_query(string_aux)
-                            else:
-                                string_aux = string_aux + siguienteTermino + " " 
-                                j += 1
-                        posting_not = self._not_(posting_parentesis)
-                        resultados = self._or_(resultados, posting_not)
-                        i = j
-                    else:
-                        posting_not = self._not_(self.index.postings[siguiente_palabra])
-                        resultados = self._or_(resultados, posting_not)
-                else: 
-                    resultados = self._or_(resultados, self.index.postings[siguiente_palabra])
-            elif termino == "NOT":
-                i += 1
-                siguiente_palabra = listadoQuery[i]
-                if siguiente_palabra == "(":
-                    j = i + 1
-                    string_aux = ""
-                    posting_parentesis = []
-                    siguienteTermino = ""
-                    while j < len(listadoQuery) and  siguienteTermino != ")":
-                        siguienteTermino = listadoQuery[j] 
-                        if siguienteTermino == ")":
-                            posting_parentesis = self.resolve_query(string_aux)
-                        else:
-                            string_aux = string_aux + siguienteTermino + " " 
-                            j += 1
-                    resultados = self._not_(posting_parentesis)
-                    i = j
-                elif termino == '``':
-                    j = i + 1
-                    string_aux = ""
-                    posting_comillas = []
-                    siguienteTermino = ""
-                    while j < len(listadoQuery) and  siguienteTermino != "''":
-                        siguienteTermino = listadoQuery[j] 
-                        if siguienteTermino == "''":
-                            posting_comillas = self.resolve_posicionales(string_aux)
-                        else:
-                            string_aux = string_aux + siguienteTermino + " " 
-                            j += 1
-                    resultados = self._not_(posting_comillas)
-                    i = j
-                else:
-                    resultados = self._not_(self.index.postings[siguiente_palabra])
-            else:
-                # Si es un término individual, inicializamos resultados con la posting list del término
-                resultados = self.index.postings[termino]
-            i += 1
-        return resultados
-
-    def resolve_query2(self, query: str) -> List[int]:
-        tokenizer = TreebankWordTokenizer()
-        listadoQuery = tokenizer.tokenize(query)
-        resultados = []
-        arrayCondiciones = ['"', "AND", "OR", "NOT", "(",]
-        condiciones = ""
-        i = 0
-        'grado AND NOT (master OR docencia) AND "lola martinez"'
-        #NOT master OR docencia  [4,5]
-        while i < len(listadoQuery):
-            termino = listadoQuery[i] 
-            # Procesamos el término actual
-            if termino in arrayCondiciones:
-                if termino == "(":
-                    j = i + 1
-                    string_aux = ""
-                    posting_parentesis = []
-                    while j < len(listadoQuery) and  siguienteTermino != ")":
-                        siguienteTermino = listadoQuery[j] 
-                        if siguienteTermino == ")":
-                            posting_parentesis = self.resolve_query(string_aux)
-                        else:
-                            string_aux = string_aux + siguienteTermino + " " 
-                            j += 1
-                    #en esto hay que darle una vuelta, porque puede que lo pisemos y no se debe
-                    resultados = posting_parentesis
-                    i = j
-                elif termino == '"':
-                    j = i + 1
-                    string_aux = ""
-                    posting_comillas = []
-                    while j < len(listadoQuery) and  siguienteTermino != ")":
-                        siguienteTermino = listadoQuery[j] 
-                        if siguienteTermino == ")":
-                            posting_comillas = self.resolve_query(string_aux)
-                        else:
-                            string_aux = string_aux + siguienteTermino + " " 
-                            j += 1
-                    #en esto hay que darle una vuelta, porque puede que lo pisemos y no se debe
-                    resultados = posting_comillas
-                    i = j
-                elif termino == "AND" or termino == "OR" or termino == "NOT": 
-                    if len(condiciones) > 0:
-                        condiciones = condiciones + " " + termino
-                    else:
-                        condiciones = termino
-            elif len(condiciones) > 0 :
-                listadoCondiciones = tokenizer.tokenize(condiciones)
-                posting_añadir = self.index.postings[termino]
-                if listadoCondiciones[0] == "AND":
-                    if len(listadoCondiciones) > 1 :
-                        if listadoCondiciones[1] == "NOT":
-                            #negamos la posting
-                            posting_añadir = self._not_(posting_añadir)
-                    resultados = self._and_(resultados, posting_añadir)
-                elif listadoCondiciones[0] == "OR":
-                    if len(listadoCondiciones) > 1 :
-                        if listadoCondiciones[1] == "NOT":
-                            #negamos la posting
-                            posting_añadir = self._not_(posting_añadir)
-                    resultados = self._or__(resultados, posting_añadir)
-                elif listadoCondiciones[0] == "NOT":
-                    # en este if solo entramos si la query empieza por NOT, si no no se debería de entrar
-                    resultados = self._not_(posting_añadir)
-                    
-            else:
-                resultados =  resultados = self.index.postings[termino]  
-            i += 1
-        return resultados"""
     
     def resolve_posicionales(self, query: str) -> Dict[int, List[int]]:
         #pasamos a minuscula la query
@@ -499,12 +246,17 @@ class Retriever:
         Return:
             Dict[str, List[Result]]: diccionario con resultados de cada consulta
         """
-        with open(fname, "r") as fr:
+        with open(fname, "r", encoding='utf-8') as fr:
             ts = time()
+            n_queries = 0
             results = {}
             for query in fr:
                 query_resuelta = self.search_query(query)
                 results[query] = query_resuelta
+                print("Query -> " + query)
+                print("Resultados -> ")
+                print(results[query])
+                n_queries += 1
             te = time()
             print(f"Time to solve {n_queries}: {te-ts}")
             return results
@@ -576,9 +328,8 @@ class Retriever:
                 if ' ' in token:
                     notas_aux.append(10)
                 else:    
-                    if self.isOperador(token):
+                    if self.isOperando(token):
                         if doc in self.index.postings[token]:
-                            print(self.index.postings[token])
                             nota = len(self.index.postings[token][doc])
                             if nota > 10:
                                 nota = 10
