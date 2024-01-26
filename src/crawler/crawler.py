@@ -29,8 +29,8 @@ class Crawler:
         - "text": Contenido completo (en crudo, sin parsear) de la web
         """
         countJSON = 0
-        listaAuxUrls = []
-        queue = Queue()
+        listaAuxUrls = [str]
+        queue: Queue = Queue()
         queue.put(self.args.url)
         while queue.not_empty and len(listaAuxUrls) < self.args.max_webs:
             url = queue.get()
@@ -56,8 +56,7 @@ class Crawler:
                 ) < self.args.max_webs:
                     queue.put(url)
                     listaAuxUrls.append(url)
-                else:
-                    print("URL: " + url + "--- YA ESTA EN EL LISTADO")
+
         print(
             "se ha llegado al tope queue: "
             + str(queue.qsize())
@@ -76,6 +75,7 @@ class Crawler:
                 json.dump(oJson, archivo)
             """se incrementa el contador de JSON para que no coincidan con el nombre"""
             countJSON += 1
+
 
     def find_urls(self, text: str) -> Set[str]:
         """Método para encontrar URLs de la Universidad Europea en el
@@ -96,4 +96,4 @@ class Crawler:
             enlace = url["href"]
             if enlace.startswith("https://universidadeuropea.com"):
                 urlsCasteadas.append(enlace)
-        return urlsCasteadas
+        return set(urlsCasteadas)
