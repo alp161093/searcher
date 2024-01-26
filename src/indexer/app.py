@@ -22,7 +22,7 @@ def parse_args():
     )
 
     parser.add_argument(
-         "-o",
+        "-o",
         "--output-name",
         type=str,
         help="Fichero destino donde almacenar el índice",
