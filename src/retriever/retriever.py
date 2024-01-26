@@ -23,7 +23,7 @@ class Result:
     snippet: str
 
     def __str__(self) -> str:
-        print(f"{self.url} -> {self.snippet}")
+        return f"{self.url} -> {self.snippet}"
 
 
 class Retriever:
@@ -356,7 +356,7 @@ class Retriever:
                 documentosResponse.append(doc.id)
         return documentosResponse
 
-    def score(self, resultados: List[int], query: str) -> List[int]:
+    def score(self, resultados: List[int], query: str) -> Dict[int, int]:
         query = self.shuntingYard(query)
         documentos_notas = {}
         notas_aux = []
@@ -400,8 +400,8 @@ class Retriever:
                 return nota_total
 
     def mostrarResultados(self, query: str, listado_results: List[Result]):
-        print("Query ->" + query)
-        print("Resultados ->")
+        print("Query -> " + query)
+        print("Resultados ordenados por nota descendente->")
         for result in listado_results:
             print("URL: " + result.url)
             print("Snippet: " + result.snippet)
