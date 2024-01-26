@@ -171,14 +171,14 @@ class Indexer:
         pdf_content = BytesIO(response.content)
         reader = PdfReader(pdf_content)
         number_of_pages = len(reader.pages)
-        response = ""
+        respuesta = ""
         indice = 0
         while indice < number_of_pages:
             page = reader.pages[indice]
             text = page.extract_text()
-            response += text + " "
+            respuesta += text + " "
             indice += 1
-        return self.remove_acentos(response.lower())
+        return self.remove_acentos(respuesta.lower())
 
     def parse(self, text: str) -> str:
         """Método para extraer el texto de un documento.
