@@ -1,10 +1,11 @@
-from argparse import Namespace
 import json
 import os
+from argparse import Namespace
 from queue import Queue
 from typing import Set
-from bs4 import BeautifulSoup
+
 import requests
+from bs4 import BeautifulSoup
 
 
 class Crawler:
@@ -31,17 +32,17 @@ class Crawler:
         listaAuxUrls = []
         queue = Queue()
         queue.put(self.args.url)
-        while  queue.not_empty and len(listaAuxUrls) < self.args.max_webs: 
+        while queue.not_empty and len(listaAuxUrls) < self.args.max_webs:
             url = queue.get()
             if url not in listaAuxUrls:
                 listaAuxUrls.append(url)
             """obtenemos el texto de la pagina"""
             response = requests.get(url)
             """Creamos el json en la ruta especificada"""
-            oJson = {"url": url, "text" : response.text}
+            oJson = {"url": url, "text": response.text}
             rutaDestino = self.args.output_folder
             path = os.path.join(rutaDestino, str(countJSON) + ".json")
-            with open(path, 'w') as archivo:
+            with open(path, "w") as archivo:
                 json.dump(oJson, archivo)
             """se incrementa el contador de JSON para que no coincidan con el nombre"""
             countJSON += 1
@@ -50,25 +51,31 @@ class Crawler:
             """recorremos todas las urls que nos han llegado y antes de meterlas en la cola hay que ver """
             for url in urls:
                 """si no esta en la lista auxiliar significa que es la primera vez que se pasa por ella, si está significa que ya la hemos leido anteriormente"""
-                if (url not in listaAuxUrls) and len(listaAuxUrls) < self.args.max_webs:
+                if (url not in listaAuxUrls) and len(
+                    listaAuxUrls
+                ) < self.args.max_webs:
                     queue.put(url)
                     listaAuxUrls.append(url)
                 else:
                     print("URL: " + url + "--- YA ESTA EN EL LISTADO")
-        print("se ha llegado al tope queue: " + str(queue.qsize()) + " listaAux: " + str(len(listaAuxUrls))) 
-        
+        print(
+            "se ha llegado al tope queue: "
+            + str(queue.qsize())
+            + " listaAux: "
+            + str(len(listaAuxUrls))
+        )
+
         while queue.not_empty:
-            url =queue.get() 
+            url = queue.get()
             response = requests.get(url)
             """Creamos el json en la ruta especificada"""
-            oJson = {"url": url, "text" : response.text}
+            oJson = {"url": url, "text": response.text}
             rutaDestino = self.args.output_folder
             path = os.path.join(rutaDestino, str(countJSON) + ".json")
-            with open(path, 'w') as archivo:
+            with open(path, "w") as archivo:
                 json.dump(oJson, archivo)
             """se incrementa el contador de JSON para que no coincidan con el nombre"""
             countJSON += 1
-
 
     def find_urls(self, text: str) -> Set[str]:
         """Método para encontrar URLs de la Universidad Europea en el
@@ -83,12 +90,10 @@ class Crawler:
             Set[str]: conjunto de urls (únicas) extraídas de la web
         """
         parser = BeautifulSoup(text, "html.parser")
-        urls = parser.find_all(name = "a", attrs={"href" : True})
+        urls = parser.find_all(name="a", attrs={"href": True})
         urlsCasteadas = []
         for url in urls:
-            enlace = url['href']
-            if(enlace.startswith("https://universidadeuropea.com")):
+            enlace = url["href"]
+            if enlace.startswith("https://universidadeuropea.com"):
                 urlsCasteadas.append(enlace)
         return urlsCasteadas
-
-
