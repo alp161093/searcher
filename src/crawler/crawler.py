@@ -44,6 +44,7 @@ class Crawler:
             path = os.path.join(rutaDestino, str(countJSON) + ".json")
             with open(path, "w") as archivo:
                 json.dump(oJson, archivo)
+            print("Archivo " + str(countJSON) + ".Json guardado")
             """se incrementa el contador de JSON para que no coincidan con el nombre"""
             countJSON += 1
             """buscamos todas las urls dentro del texto de la url"""
@@ -53,18 +54,11 @@ class Crawler:
                 """si no esta en la lista auxiliar significa que es la primera vez que se pasa por ella, si está significa que ya la hemos leido anteriormente"""
                 if (url not in listaAuxUrls) and len(
                     listaAuxUrls
-                ) < self.args.max_webs:
+                ) <= self.args.max_webs:
                     queue.put(url)
                     listaAuxUrls.append(url)
 
-        print(
-            "se ha llegado al tope queue: "
-            + str(queue.qsize())
-            + " listaAux: "
-            + str(len(listaAuxUrls))
-        )
-
-        while queue.not_empty:
+        while queue.not_empty and countJSON < self.args.max_webs:
             url = queue.get()
             response = requests.get(url)
             """Creamos el json en la ruta especificada"""
@@ -73,8 +67,10 @@ class Crawler:
             path = os.path.join(rutaDestino, str(countJSON) + ".json")
             with open(path, "w") as archivo:
                 json.dump(oJson, archivo)
+            print("Archivo " + str(countJSON) + ".Json guardado")
             """se incrementa el contador de JSON para que no coincidan con el nombre"""
             countJSON += 1
+        print("Se ha termminado el crawler")
 
     def find_urls(self, text: str) -> Set[str]:
         """Método para encontrar URLs de la Universidad Europea en el
