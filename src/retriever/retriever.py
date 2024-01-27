@@ -23,7 +23,7 @@ class Result:
     snippet: str
 
     def __str__(self) -> str:
-        print(f"{self.url} -> {self.snippet}")
+        return f"{self.url} -> {self.snippet}"
 
 
 class Retriever:
@@ -92,6 +92,18 @@ class Retriever:
         return resultados
 
     def tokenize(self, query: str):
+        """
+        esta funcion se encarga de tokenizar el string que se le pasa
+        "[^"]+" Cualquier sentencia encerrada entre comillas dobles ""
+        \bAND\b La palabra 'AND' como palabra completa
+        \bOR\b La palabra 'OR' como palabra completa
+        \bNOT\b La palabra 'NOT' como palabra completa
+        \( Inicio de parentesis
+        \) Fin de parentesis
+        \w+ Cualquier palabra
+        Una vez tokenizada el string se le quitan las comillas si las tuviera
+        Se devuelve una lista tokenizada
+        """
         tokens = re.findall(
             r'("[^"]+"|\bAND\b|\bOR\b|\bNOT\b|\(|\)|\w+)', query
         )
@@ -105,6 +117,10 @@ class Retriever:
         return resultado
 
     def prec(self, c: str) -> int:
+        """
+        Esta funcion gestiona la importancia de cada operando
+        para los parentesis devuelve el numero maximo
+        """
         # Sirve para darle la precedencia a cada operador, cuanto mayor es el resultado menor precedencia tiene
         if c == "NOT":
             return 1
@@ -118,9 +134,27 @@ class Retriever:
         return sys.maxsize  # Devolvemos un 4 si es un parentesis
 
     def isOperando(self, c: str) -> bool:
+        """
+        esta funcion comprueba si el string que se le pasa es un operando o un operador
+        si es operador devuelve false y si es operando (palabra a comprobar) devuelve true
+        """
         return not c in ["AND", "OR", "NOT", "(", ")"]
 
     def shuntingYard(self, query: str):
+        """
+        Esta funcion ordena la query para que podamos luego hacer las operaciones
+        sigue el algoritmo de shunting yard
+        primero comprueba si la query esta vacia
+        se inicializan 2 listas vacias para trabajar sobre ellas
+        el bucle for recorre todas las posiciones de la lista
+        Si es (, se añade a listado_aux.
+        Si es ) se extraen tokens de listado_aux y se añaden a resultado hasta encontrar ( que tambien se elimina de listado_aux
+        Si es un operando (no operador) se añade a resultado
+        Si es un operador mientras no sea (, se quita de listado_aux y se añade a resultado. El ultimo operador que quede se añade a listado_aux
+        Al final se vacia el listado_aux y se añade a resultado y se devuelve resultado
+        Ejemplo entrada ['GRADO DE INFORMATICA', 'AND','(','MASTER','AND','TEST',')','OR','NOT','DOCTORADO']
+        Retorno ['GRADO DE INFORMATICA', 'MASTER', 'TEST', 'AND', 'AND', 'DOCTORADO', 'NOT', 'OR']
+        """
         tokens = self.tokenize(query)
         if not tokens:
             return ""
@@ -162,6 +196,16 @@ class Retriever:
             return self._or_(posting_a, posting_b)
 
     def resolver_query(self, query: str) -> List[int]:
+        """
+        Esta funcion se encarga del proceso final, una vez tokenizada y procesada por el shunting yard
+        Inicializamos un listado_aux
+        Con un bucle for recorremos toda la lista de la query
+        Si contiene espacios, debemos gestionarlo como una busqueda posicional y almacenamos su posting
+        Si es un operando calculamos su posting y la almacenamos
+        Si es un NOT, sacamos la ultima posting, la negamos y guardamos el resultado
+        Si es un AND o OR, sacamos las dos ultimas posting y hacemos la operacion correspondente y guardamos el resultado
+        Una vez realizadas todas las operaciones, devolvemos la posting que cumple con la query
+        """
         listado_aux = []
         for token in query:
             if " " in token:
@@ -356,7 +400,7 @@ class Retriever:
                 documentosResponse.append(doc.id)
         return documentosResponse
 
-    def score(self, resultados: List[int], query: str) -> List[int]:
+    def score(self, resultados: List[int], query: str) -> Dict[int, int]:
         query = self.shuntingYard(query)
         documentos_notas = {}
         notas_aux = []
@@ -400,8 +444,8 @@ class Retriever:
                 return nota_total
 
     def mostrarResultados(self, query: str, listado_results: List[Result]):
-        print("Query ->" + query)
-        print("Resultados ->")
+        print("Query -> " + query)
+        print("Resultados ordenados por nota descendente->")
         for result in listado_results:
             print("URL: " + result.url)
             print("Snippet: " + result.snippet)
