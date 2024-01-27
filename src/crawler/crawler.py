@@ -76,7 +76,6 @@ class Crawler:
             """se incrementa el contador de JSON para que no coincidan con el nombre"""
             countJSON += 1
 
-
     def find_urls(self, text: str) -> Set[str]:
         """Método para encontrar URLs de la Universidad Europea en el
         texto de una web. SOLO se deben extraer URLs que aparezcan en
